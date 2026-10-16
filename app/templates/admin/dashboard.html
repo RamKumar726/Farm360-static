@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Admin overview — FARM360{% endblock %}
+{% block content %}
+{% include 'admin/_nav.html' %}
+<main class="container admin-page">
+  <header class="admin-page-heading"><div><p class="eyebrow">FARM360 · ADMINISTRATION</p><h1>Good to see you.</h1><p class="admin-subtitle">A clear view of enquiries, delivery and verified payments.</p></div><a class="btn btn-forest" href="{{ url_for('admin.leads') }}">Open lead desk <span>→</span></a></header>
+  <section class="admin-metric-grid" aria-label="Business overview">
+    {% for label,value,kind in [('All leads',metrics.total,'neutral'),('Open enquiries',metrics.open,'gold'),('Closed Won',metrics.won,'green'),('Closed Lost',metrics.lost,'neutral'),('Active projects',metrics.projects,'green'),('Verified payments','₹' ~ ('%.0f'|format(metrics.paid|float)),'gold')] %}<article class="admin-metric {{ kind }}"><span>{{ label }}</span><strong>{{ value }}</strong><small>{{ 'Across the business' if label=='All leads' else ('Awaiting next action' if label=='Open enquiries' else ('In delivery' if label=='Active projects' else 'Updated from records')) }}</small></article>{% endfor %}
+  </section>
+  <div class="admin-dashboard-grid">
+    <section class="admin-surface stage-overview"><div class="admin-surface-heading"><div><p class="eyebrow">PIPELINE</p><h2>Leads by stage</h2></div><a href="{{ url_for('admin.leads') }}">See all leads →</a></div>
+      {% set max_stage = stages.values()|max if stages else 0 %}
+      {% for stage,count in stages.items() %}<div class="stage-bar-row"><div class="stage-bar-label"><span>{{ stage }}</span><strong>{{ count }}</strong></div><div class="stage-bar-track"><span style="width:{{ (count / max_stage * 100)|round|int if max_stage else 0 }}%"></span></div></div>{% endfor %}
+    </section>
+    <section class="admin-surface recent-leads"><div class="admin-surface-heading"><div><p class="eyebrow">LATEST ACTIVITY</p><h2>Recent enquiries</h2></div><a href="{{ url_for('admin.leads') }}">View lead desk →</a></div>
+      {% for lead in leads %}<a class="dashboard-lead-row" href="{{ url_for('admin.lead_detail',lead_id=lead.id) }}"><span class="lead-avatar">{{ lead.full_name[:1]|upper }}</span><span class="dashboard-lead-main"><strong>{{ lead.full_name }}</strong><small>{{ lead.reference }} · {{ lead.service_name_snapshot }}</small></span><span class="dashboard-stage"><span class="status-pip status-pip-{{ lead.status|lower|replace(' ','-') }}"></span>{{ lead.stage }}</span><span class="row-arrow">↗</span></a>{% else %}<div class="admin-empty"><strong>No enquiries yet</strong><span>New website enquiries will show here.</span></div>{% endfor %}
+    </section>
+  </div>
+</main>
+{% endblock %}

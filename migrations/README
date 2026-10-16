@@ -1,0 +1,1 @@
+Initialize migrations with `flask --app run db init`, then generate the initial revision with `flask --app run db migrate -m "initial schema"` and apply using `flask --app run db upgrade`. Review every generated migration before deployment.
