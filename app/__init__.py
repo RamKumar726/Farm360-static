@@ -23,7 +23,7 @@ def create_app(test_config=None):
         and os.getenv("FLASK_DEBUG", "0") != "1"
     ):
         app.logger.warning(
-            "Local uploads are ephemeral; configure persistent object storage before production uploads"
+            "Local uploads are disabled in production; configure Cloudinary before enabling image uploads"
         )
     db.init_app(app)
     migrate.init_app(app, db)

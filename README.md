@@ -48,19 +48,19 @@ The JSON API contract is exposed at `/api/v1/openapi.json`. Public endpoints exp
 
 ## Images and content
 
-Website content is editable in the admin area. Image uploads validate extension, content signature, and per-file size, and use random storage keys. Local development stores files under the Flask instance directory. Production uploads require S3-compatible storage configured with `UPLOAD_STORAGE_BACKEND=s3`, `UPLOAD_BUCKET`, `UPLOAD_REGION`, and `UPLOAD_PUBLIC_BASE_URL`; AWS credentials should come from the host's role/secret mechanism. Configure the bucket/CDN to serve these objects publicly without allowing public writes. Render's application filesystem is ephemeral, and local uploads are rejected when the app runs in production mode.
+Website content is editable in the admin area. Image uploads validate extension, content signature, and per-file size. Local development stores files under the Flask instance directory. Production uploads use Cloudinary, configured with `UPLOAD_STORAGE_BACKEND=cloudinary` and the server-side `CLOUDINARY_URL` credential from the Cloudinary Console. Uploads are saved in the configured `CLOUDINARY_UPLOAD_FOLDER` and image URLs are stored in portfolio records. Keep `CLOUDINARY_URL` private and out of source control. Render's application filesystem is ephemeral, and local uploads are rejected when the app runs in production mode.
 
-## Render and Neon deployment
+## Render deployment
 
-1. Create a Neon PostgreSQL database and restrict credentials to the application.
-2. Create the Render web service from the repository; use build command `pip install -r requirements.txt` and start command `gunicorn run:app`.
-3. Set `SECRET_KEY`, `DATABASE_URL` (SQLAlchemy URL using `postgresql+psycopg://`), `FLASK_DEBUG=0`, `SESSION_COOKIE_SECURE=1`, `PUBLIC_BASE_URL`, and a persistent `RATELIMIT_STORAGE_URI` such as Redis for multi-process rate limiting. Configure the S3 storage variables before enabling image uploads.
+1. Create a PostgreSQL database and restrict credentials to the application.
+2. Create the Render web service from the repository; use build command `pip install -r requirements.txt` and start command `gunicorn run:app --bind 0.0.0.0:$PORT`.
+3. Set `SECRET_KEY`, `DATABASE_URL` (SQLAlchemy URL using `postgresql+psycopg://`), `FLASK_DEBUG=0`, `SESSION_COOKIE_SECURE=1`, and `PUBLIC_BASE_URL`. Set `UPLOAD_STORAGE_BACKEND=cloudinary`, `CLOUDINARY_URL` (from the Cloudinary Console), and optionally `CLOUDINARY_UPLOAD_FOLDER=farm360`. Keep credentials in Render's environment settings.
 4. Deploy the application, then run `flask db upgrade` as a release command or one-off shell command. Review migrations before applying them.
 5. Run `flask seed-services` (repeatable), then `flask create-admin` from a secure one-off shell.
 6. Verify `/healthz`, sign in, publish accurate company information, and submit a test enquiry. Exercise stage advancement, quote approval, payment record and verification, and Closed Won project creation.
-7. Configure durable image storage and verify restoration from a backup before publishing images.
+7. Upload a test image through the admin area and verify it loads from the returned Cloudinary URL.
 8. Connect the custom `.in` domain in Render, configure DNS as Render specifies, force HTTPS, and verify secure cookies.
-9. Set up Neon backups/restore points and document a regular export to a separate protected location. Periodically test restore into a separate database before changing production.
+9. Set up database backups/restore points and document a regular export to a separate protected location. Periodically test restore into a separate database before changing production.
 
 Free hosting/database tiers can sleep, impose compute/storage limits, and provide different backup retention guarantees. Confirm current provider limits and pricing before launch; do not rely on free-tier persistence for customer records or uploaded images.
 
@@ -74,7 +74,7 @@ The app intentionally serves one FARM360 business. SaaS support would require or
 
 ## Current implementation limits
 
-- Production image uploads require a configured S3-compatible bucket and public read/CDN URL; that infrastructure has not been provisioned or tested here.
+- Production image uploads require a configured Cloudinary account and have not been verified against a live Cloudinary environment here.
 - API auth is same-site session cookie based; cross-origin clients need a separately reviewed CSRF/CORS strategy.
 - The CRM provides the core seven-stage workflow but still needs the complete service-specific data capture and advanced filters described in the implementation checklist.
 - The current OpenAPI JSON lists the main operations but does not yet provide full schemas and examples for every request/response.

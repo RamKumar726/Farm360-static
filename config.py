@@ -21,9 +21,8 @@ class Config:
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", "31457280"))
     PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:5000")
     UPLOAD_STORAGE_BACKEND = os.getenv("UPLOAD_STORAGE_BACKEND", "local")
-    UPLOAD_BUCKET = os.getenv("UPLOAD_BUCKET", "")
-    UPLOAD_REGION = os.getenv("UPLOAD_REGION", "")
-    UPLOAD_PUBLIC_BASE_URL = os.getenv("UPLOAD_PUBLIC_BASE_URL", "").rstrip("/")
+    CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
+    CLOUDINARY_UPLOAD_FOLDER = os.getenv("CLOUDINARY_UPLOAD_FOLDER", "farm360")
     UPLOAD_LOCAL_DIRECTORY = os.getenv("UPLOAD_LOCAL_DIRECTORY", "")
     RATELIMIT_STORAGE_URI = os.getenv("RATELIMIT_STORAGE_URI", "memory://")
     RATELIMIT_HEADERS_ENABLED = True

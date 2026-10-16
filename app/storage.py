@@ -1,6 +1,7 @@
 import os
 import re
 import uuid
+from io import BytesIO
 from pathlib import Path
 from flask import current_app, send_from_directory, url_for
 
@@ -35,30 +36,39 @@ def store_image(upload):
     stored_extension = "jpg" if extension == "jpeg" else extension
     key = f"uploads/{uuid.uuid4().hex}.{stored_extension}"
     backend = current_app.config["UPLOAD_STORAGE_BACKEND"].lower()
-    if backend == "s3":
-        bucket = current_app.config["UPLOAD_BUCKET"]
-        region = current_app.config["UPLOAD_REGION"]
-        public_base = current_app.config["UPLOAD_PUBLIC_BASE_URL"]
-        if not bucket or not region or not public_base:
-            raise UploadError(
-                "S3 bucket, region, and public asset base URL must be configured."
-            )
-        import boto3
+    if backend == "cloudinary":
+        cloudinary_url = current_app.config["CLOUDINARY_URL"].strip()
+        if not cloudinary_url:
+            raise UploadError("Cloudinary credentials must be configured.")
 
-        client = boto3.client("s3", region_name=region)
-        client.put_object(
-            Bucket=bucket,
-            Key=key,
-            Body=content,
-            ContentType=mime,
-            CacheControl="public, max-age=31536000, immutable",
-        )
-        return f"{public_base}/{key}"
+        import cloudinary
+        from cloudinary import uploader
+
+        cloudinary.config(cloudinary_url=cloudinary_url, secure=True)
+        try:
+            result = uploader.upload(
+                BytesIO(content),
+                resource_type="image",
+                folder=current_app.config["CLOUDINARY_UPLOAD_FOLDER"],
+                public_id=uuid.uuid4().hex,
+                overwrite=False,
+                unique_filename=False,
+                use_filename=False,
+                allowed_formats=["jpg", "png", "webp"],
+            )
+        except Exception as exc:
+            current_app.logger.exception("Cloudinary image upload failed")
+            raise UploadError("Image upload failed. Please try again.") from exc
+
+        image_url = result.get("secure_url")
+        if not image_url:
+            raise UploadError("Cloudinary did not return an image URL.")
+        return image_url
     if backend != "local":
         raise UploadError("Configured image storage backend is unsupported.")
     if not current_app.testing and not current_app.debug:
         raise UploadError(
-            "Local image storage is disabled in production. Configure S3-compatible storage."
+            "Local image storage is disabled in production. Configure Cloudinary."
         )
     root = current_app.config["UPLOAD_LOCAL_DIRECTORY"] or os.path.join(
         current_app.instance_path, "uploads"
@@ -75,4 +85,4 @@ def serve_local_image(key):
     root = current_app.config["UPLOAD_LOCAL_DIRECTORY"] or os.path.join(
         current_app.instance_path, "uploads"
     )
-    return send_from_directory(root, key.split("/", 1)[1], max_age=3600)
+    return send_from_directory(root, key, max_age=3600)

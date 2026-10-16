@@ -19,7 +19,7 @@
 - [x] Phase 6: transactional won closure with one-to-one project constraint.
 - [~] Phase 7: versioned public/admin API with a basic OpenAPI contract; the contract and endpoint test coverage need expansion.
 - [x] Phase 8: production configuration, security headers, and deployment/recovery guidance.
-- [x] Phase 8: validated local development and S3-compatible production image storage adapters.
+- [x] Phase 8: validated local development and Cloudinary production image storage adapters.
 - [x] Phase 9: app route registration, 27 passing tests, Ruff checks, and fresh-schema migration checks.
 - [x] Completed lead stages can be reviewed and edited; edits are recorded in the lead activity trail and approved scope remains protected.
 - [x] Visual polish: responsive public homepage, updated type and color system, subtle scroll reveals, reduced-motion support, and a consistent admin workspace.
@@ -29,7 +29,7 @@
 
 - Automated tests pass against SQLite; a hosted PostgreSQL/Neon deployment was not available for verification.
 - No PostgreSQL service or credentials are configured, so migrations against a real PostgreSQL database and hosted deployment cannot be verified here.
-- Production S3 credentials, bucket policy, CDN URL, and hosted persistence have not been configured or verified.
+- Cloudinary credentials and hosted persistence have not been configured or verified.
 - PostgreSQL and Neon were not available; only SQLite migration behavior was checked.
 - The admin CRM captures a useful shared set of qualification, analysis, value, decision, and scope notes, but it does not yet expose every field listed for acreage, crops, water, challenges, deliverables, and ROI.
 - Social-link editing, portfolio completion-date editing, and richer project scheduling fields remain incomplete.
