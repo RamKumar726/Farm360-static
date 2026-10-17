@@ -91,38 +91,56 @@ def register_cli(app):
                 "terrace-gardening",
                 "Thoughtful garden design and installation for terraces and rooftops.",
                 "Plan and develop productive, welcoming terrace gardens with optional ongoing care.",
+                "Make better use of balconies, terraces and rooftops.\nChoose planting suited to the available light and space.\nCreate a welcoming place to grow and unwind.",
+                "Space and sunlight review\nPlanting and layout plan\nInstallation and care options",
             ),
             (
                 "Home Gardening",
                 "home-gardening",
                 "Gardens for front yards, backyards, herbs, vegetables, and fruit.",
                 "Create a home growing space suited to your available area, goals, and local conditions.",
+                "Bring food and greenery into everyday spaces.\nPlan around your household’s goals and available time.\nMake use of existing soil, containers or beds.",
+                "Garden and site discussion\nLayout and plant selection\nSetup and maintenance options",
             ),
             (
                 "Farm Management",
                 "farm-management",
                 "Agricultural land management for owners who need hands-on support.",
                 "Coordinate land preparation, crop planning, cultivation, maintenance, and harvest as an agricultural service.",
+                "Coordinate practical work across the growing cycle.\nPlan around land, water and crop conditions.\nKeep key activities and next steps organized.",
+                "Land and resource review\nCrop and activity planning\nCultivation and maintenance coordination",
             ),
             (
                 "Farm Rental",
                 "farm-rental",
                 "Discuss leasing agricultural land for independent cultivation.",
                 "A rental arrangement where FARM360 leases land and cultivates crops under agreed terms, distinct from fee-based farm management.",
+                "Explore an agreed land-use arrangement.\nDiscuss responsibilities and terms before cultivation.\nMatch the growing plan to the available land.",
+                "Land and suitability discussion\nRental terms and responsibilities\nCultivation plan under agreed terms",
             ),
         ]
-        for order, (name, slug, short, detail) in enumerate(defaults, 1):
-            if not Service.query.filter_by(slug=slug).first():
+        for order, (name, slug, short, detail, benefits, features) in enumerate(
+            defaults, 1
+        ):
+            service = Service.query.filter_by(slug=slug).first()
+            if not service:
                 db.session.add(
                     Service(
                         name=name,
                         slug=slug,
                         short_description=short,
                         description=detail,
+                        benefits=benefits,
+                        features=features,
                         display_order=order,
                         active=True,
                     )
                 )
+            else:
+                if not service.benefits:
+                    service.benefits = benefits
+                if not service.features:
+                    service.features = features
         db.session.commit()
         click.echo("Default services are present.")
 

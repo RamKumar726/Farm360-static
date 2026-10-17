@@ -42,7 +42,9 @@ Tests use isolated in-memory SQLite data. Before release, also exercise migratio
 
 There is no public admin registration. Run `flask create-admin` interactively; passwords must be at least 12 characters and are hashed with Werkzeug. The browser and API use Flask-Login sessions, and state-changing browser requests require CSRF tokens.
 
-Leads advance one stage at a time. Stage-specific details live in an audited JSON payload. Quotes use Decimal/Numeric amounts and revisions. Payments are recorded separately from verification; Closed Won requires approved scope and verified payments covering the full agreed amount. Won closure and project creation are one transaction, and the project has a unique lead relationship. Lost closure needs a reason and locks the lead.
+Leads advance one stage at a time. Stage-specific details live in an audited JSON payload. Quotes use Decimal/Numeric amounts and revisions. Payments are recorded separately from verification. A lead can become a project after the approved scope and quote are in place and an initial payment is verified; subsequent installments are managed from the project record, with the remaining balance recalculated from verified payments. Won closure and project creation are one transaction, and the project has a unique lead relationship. Lost closure needs a reason and locks the lead.
+
+Each project has an administrator-only progress journal for dated work notes and up to four Cloudinary-backed photos per update. Public service detail pages show editable service benefits, inclusions, and published portfolio work linked to that service.
 
 The JSON API contract is exposed at `/api/v1/openapi.json`. Public endpoints expose active services, published portfolio entries, and enquiry submission. Admin routes require an authenticated session; browser deployments must retain CSRF protection. The API currently reuses the same lifecycle services as the HTML application.
 

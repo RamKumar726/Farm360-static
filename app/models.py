@@ -240,3 +240,26 @@ class Project(db.Model):
         db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
     )
     lead = db.relationship(Lead, back_populates="project")
+    updates = db.relationship(
+        "ProjectUpdate",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        order_by="ProjectUpdate.created_at.desc()",
+    )
+
+
+class ProjectUpdate(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(
+        db.Integer,
+        db.ForeignKey("project.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_by_id = db.Column(db.Integer, db.ForeignKey("admin_user.id"))
+    title = db.Column(db.String(180), nullable=False)
+    notes = db.Column(db.Text)
+    images = db.Column(db.JSON, nullable=False, default=list)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    project = db.relationship(Project, back_populates="updates")
+    created_by = db.relationship(AdminUser)

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ service.name }} — FARM360{% endblock %}
+{% block content %}
+<section class="service-detail-hero">
+  <div class="container service-detail-hero-grid">
+    <div class="service-detail-copy">
+      <p class="eyebrow eyebrow-light"><span class="eyebrow-line"></span> FARM360 SERVICE</p>
+      <p class="service-detail-kicker">{{ service.short_description }}</p>
+      <h1>{{ service.name }}</h1>
+      <p class="service-detail-intro">{{ service.description }}</p>
+      <a class="btn btn-lime" href="{{ url_for('public.enquire', service=service.id) }}">Plan this with us <span>↗</span></a>
+      <div class="service-detail-assurance"><span>01 / 03</span><span>Thoughtful advice · Clear scope · Work made for your place</span></div>
+    </div>
+    <div class="service-detail-visual" data-reveal>
+      {% if service.image_key %}<img src="{{ service.image_key }}" alt="{{ service.name }} project">{% else %}<div class="service-detail-visual-placeholder"><span>✳</span><small>GROW WELL, LIVE WELL</small></div>{% endif %}
+      <span class="service-visual-caption">{{ service.name }} · FARM360</span>
+    </div>
+  </div>
+</section>
+
+<section class="container service-detail-main">
+  <div class="service-detail-overview" data-reveal>
+    <div><p class="eyebrow">A GOOD PLACE TO START</p><h2>Made for your land,<br><em>not the other way around.</em></h2></div>
+    <div class="service-detail-body"><p>{{ service.description }}</p><p>We begin by understanding your space, priorities and constraints, then shape a practical approach together.</p></div>
+  </div>
+
+  {% set benefits = service.benefits.splitlines() if service.benefits else [] %}
+  {% set features = service.features.splitlines() if service.features else [] %}
+  <div class="service-detail-panels">
+    <article class="service-detail-panel" data-reveal>
+      <p class="eyebrow">THE VALUE</p><h3>What this can help with</h3>
+      {% if benefits %}<ul class="service-benefit-list">{% for benefit in benefits if benefit.strip() %}<li><span>✓</span>{{ benefit.strip() }}</li>{% endfor %}</ul>{% else %}<p class="service-detail-muted">Tell us about your goals and we’ll discuss the right support for your place.</p>{% endif %}
+    </article>
+    <article class="service-detail-panel included-panel" data-reveal>
+      <p class="eyebrow">THE APPROACH</p><h3>What’s included</h3>
+      {% if features %}<ul class="service-included-list">{% for feature in features if feature.strip() %}<li>{{ '%02d'|format(loop.index) }}<span>{{ feature.strip() }}</span></li>{% endfor %}</ul>{% else %}<p class="service-detail-muted">The exact deliverables are agreed with you before work begins.</p>{% endif %}
+    </article>
+  </div>
+
+  <section class="service-trust-band" data-reveal aria-label="How FARM360 works">
+    <div><span>01</span><strong>Listen first</strong><p>Start with your goals and the realities of your site.</p></div>
+    <div><span>02</span><strong>Agree the scope</strong><p>Review what will be done before the project begins.</p></div>
+    <div><span>03</span><strong>Track the work</strong><p>Keep a dated project record as the work progresses.</p></div>
+  </section>
+</section>
+
+<section class="service-related-work">
+  <div class="container">
+    <div class="service-related-heading" data-reveal><div><p class="eyebrow">REAL WORK, RELATED TO THIS SERVICE</p><h2>See what can <em>take root.</em></h2></div><a href="{{ url_for('public.portfolio_page') }}">Explore all our work <span>↗</span></a></div>
+    <div class="service-related-grid">
+      {% for item in works %}<article class="service-related-card" data-reveal><a class="service-related-image" href="{{ url_for('public.portfolio_page') }}" aria-label="View {{ item.title }} in our work">{% if item.image_key %}<img src="{{ item.image_key }}" alt="{{ item.title }}">{% else %}<span>✳</span>{% endif %}</a><div class="service-related-copy"><p class="eyebrow">{% if item.location %}{{ item.location }}{% else %}FARM360 PROJECT{% endif %}{% if item.completed_on %} · {{ item.completed_on.strftime('%Y') }}{% endif %}</p><h3>{{ item.title }}</h3><p>{{ item.description|truncate(170) }}</p></div></article>
+      {% else %}<div class="service-related-empty"><span>✳</span><h3>More work is taking shape.</h3><p>We’re preparing related project stories. Talk with us about what you have in mind.</p><a class="service-story-link" href="{{ url_for('public.enquire', service=service.id) }}">Discuss this service <span>↗</span></a></div>{% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="services-bottom-cta"><div class="container"><div><p class="eyebrow eyebrow-light">A THOUGHTFUL FIRST STEP</p><h2>Let’s talk about<br><em>{{ service.name|lower }}.</em></h2></div><a href="{{ url_for('public.enquire', service=service.id) }}">Start an enquiry <span>↗</span></a></div></section>
+{% endblock %}

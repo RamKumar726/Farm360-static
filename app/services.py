@@ -229,6 +229,13 @@ def save_quote(
     if base < 0 or reduction < 0 or reduction > base:
         raise DomainError("Discount must be between zero and the quoted amount.")
     total = base - reduction
+    if lead.stage == "Negotiation & Payment" and revise:
+        if base == lead.quoted_price and reduction == lead.discount_amount:
+            raise DomainError("Change the quote amount to record a negotiated price revision.")
+        if total < recorded_payment_total(lead):
+            raise DomainError(
+                "The new agreed total cannot be less than payments already recorded."
+            )
     lead.quoted_price, lead.discount_amount, lead.final_price = base, reduction, total
     if approve:
         if not (lead.stage_data or {}).get("approved_scope"):
@@ -262,11 +269,48 @@ def save_quote(
     return lead
 
 
+def ensure_payment_allowed(lead):
+    if lead.status == "Open":
+        return
+    if (
+        lead.status == "Closed Won"
+        and lead.project
+        and lead.project.status != "Cancelled"
+    ):
+        return
+    raise DomainError("Payments can only be managed for active leads or active won projects.")
+
+
+def recorded_payment_total(lead):
+    total = (
+        db.session.query(func.coalesce(func.sum(Payment.amount), 0))
+        .filter_by(lead_id=lead.id)
+        .scalar()
+    )
+    return Decimal(str(total))
+
+
+def verified_payment_total(lead):
+    total = (
+        db.session.query(func.coalesce(func.sum(Payment.amount), 0))
+        .filter_by(lead_id=lead.id, verified=True)
+        .scalar()
+    )
+    return Decimal(str(total))
+
+
+def sync_project_payment_summary(lead):
+    if lead.project:
+        lead.project.verified_payment_summary = verified_payment_total(lead)
+
+
 def record_payment(lead, amount, method, received_on, actor, reference="", notes=""):
-    ensure_open(lead)
+    ensure_payment_allowed(lead)
     value = money(amount)
     if value <= 0 or method not in PAYMENT_METHODS:
         raise DomainError("Use a positive amount and a supported payment method.")
+    if lead.final_price > 0 and recorded_payment_total(lead) + value > lead.final_price:
+        raise DomainError("This payment is greater than the remaining agreed balance.")
     payment = Payment(
         lead=lead,
         amount=value,
@@ -285,7 +329,7 @@ def record_payment(lead, amount, method, received_on, actor, reference="", notes
 
 
 def verify_payment(payment, actor):
-    ensure_open(payment.lead)
+    ensure_payment_allowed(payment.lead)
     if payment.verified:
         raise DomainError("Payment is already verified.")
     payment.verified, payment.verified_by_id, payment.verified_at = (
@@ -299,6 +343,7 @@ def verify_payment(payment, actor):
         actor,
         {"payment_id": payment.id, "amount": str(payment.amount)},
     )
+    sync_project_payment_summary(payment.lead)
     db.session.commit()
     return payment
 
@@ -326,13 +371,11 @@ def close_won(lead, actor):
         raise DomainError("An approved quote and scope are required.")
     if lead.final_price <= 0:
         raise DomainError("Final agreed value must be greater than zero.")
-    paid = (
-        db.session.query(func.coalesce(func.sum(Payment.amount), 0))
-        .filter_by(lead_id=lead.id, verified=True)
-        .scalar()
-    )
-    if Decimal(str(paid)) < lead.final_price:
-        raise DomainError("Verified payments must cover the full agreed amount.")
+    paid = verified_payment_total(lead)
+    if paid <= 0:
+        raise DomainError(
+            "Verify the customer's initial or token payment before creating the project."
+        )
     try:
         lead.status, lead.stage, lead.closed_by_id, lead.closed_at = (
             "Closed Won",
@@ -351,7 +394,7 @@ def close_won(lead, actor):
             approved_scope=(lead.stage_data or {}).get("approved_scope", ""),
             deliverables=(lead.stage_data or {}).get("deliverables"),
             final_value=lead.final_price,
-            verified_payment_summary=Decimal(str(paid)),
+            verified_payment_summary=paid,
         )
         db.session.add(project)
         db.session.flush()

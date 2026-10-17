@@ -1,5 +1,6 @@
 import re
 from datetime import date
+from decimal import Decimal
 from functools import wraps
 
 from flask import (
@@ -17,7 +18,16 @@ from sqlalchemy import or_
 from werkzeug.security import check_password_hash
 
 from .extensions import csrf, db, limiter
-from .models import AdminUser, Lead, PortfolioItem, Project, Service, SiteSettings
+from .models import (
+    AdminUser,
+    Lead,
+    LeadActivity,
+    PortfolioItem,
+    Project,
+    ProjectUpdate,
+    Service,
+    SiteSettings,
+)
 from .services import (
     PROJECT_STATUSES,
     DomainError,
@@ -96,6 +106,26 @@ def services_page():
         services=Service.query.filter_by(active=True, archived=False)
         .order_by(Service.display_order, Service.name)
         .all(),
+        settings=settings(),
+    )
+
+
+@public_bp.get("/services/<slug>")
+def service_detail(slug):
+    service = Service.query.filter_by(
+        slug=slug, active=True, archived=False
+    ).first_or_404()
+    works = (
+        PortfolioItem.query.filter_by(
+            service_id=service.id, published=True, archived=False
+        )
+        .order_by(PortfolioItem.display_order, PortfolioItem.created_at.desc())
+        .all()
+    )
+    return render_template(
+        "public/service_detail.html",
+        service=service,
+        works=works,
         settings=settings(),
     )
 
@@ -358,6 +388,7 @@ def lead_quote(lead_id):
         if stage_values:
             update_stage_data(lead, stage_values, current_user)
         approve = request.form.get("approve") == "yes"
+        revise = request.form.get("revise") == "yes"
         save_quote(
             lead,
             request.form.get("base_price"),
@@ -365,10 +396,15 @@ def lead_quote(lead_id):
             request.form.get("notes", ""),
             current_user,
             approve,
-            request.form.get("revise") == "yes",
+            revise,
             request.form.get("approved_scope"),
         )
-        flash("Quote saved.", "success")
+        flash(
+            "Negotiated price saved and approved."
+            if revise and approve
+            else "Quote saved.",
+            "success",
+        )
     except DomainError as e:
         flash(str(e), "danger")
     return redirect(url_for("admin.lead_detail", lead_id=lead.id))
@@ -452,6 +488,8 @@ def manage_services():
                     slug=slug,
                     short_description=request.form.get("short_description", "")[:300],
                     description=request.form.get("description", ""),
+                    benefits=request.form.get("benefits", "")[:5000],
+                    features=request.form.get("features", "")[:5000],
                     active="active" in request.form,
                     display_order=request.form.get("display_order", 0, type=int),
                 )
@@ -477,6 +515,8 @@ def edit_service(service_id):
     service.name = request.form.get("name", service.name).strip()[:120]
     service.short_description = request.form.get("short_description", "")[:300]
     service.description = request.form.get("description", "")[:10000]
+    service.benefits = request.form.get("benefits", "")[:5000]
+    service.features = request.form.get("features", "")[:5000]
     service.active = "active" in request.form
     service.display_order = request.form.get("display_order", 0, type=int)
     try:
@@ -602,9 +642,32 @@ def manage_settings():
 @admin_bp.get("/projects")
 @login_required
 def projects():
+    projects = Project.query.order_by(Project.created_at.desc()).all()
     return render_template(
         "admin/projects.html",
-        projects=Project.query.order_by(Project.created_at.desc()).all(),
+        projects=projects,
+    )
+
+
+@admin_bp.get("/projects/<int:project_id>")
+@login_required
+def project_detail(project_id):
+    project = db.get_or_404(Project, project_id)
+    payments = project.lead.payments
+    payment_totals = {
+        "recorded": sum(
+            (Decimal(str(payment.amount)) for payment in payments), Decimal("0.00")
+        ),
+        "verified": sum(
+            (Decimal(str(payment.amount)) for payment in payments if payment.verified),
+            Decimal("0.00"),
+        ),
+    }
+    return render_template(
+        "admin/project_detail.html",
+        project=project,
+        payment_totals=payment_totals,
+        today=date.today().isoformat(),
     )
 
 
@@ -630,7 +693,92 @@ def project_update(project_id):
         )
         db.session.commit()
         flash("Project updated.", "success")
-    return redirect(url_for("admin.projects"))
+    return redirect(url_for("admin.project_detail", project_id=project.id))
+
+
+@admin_bp.post("/projects/<int:project_id>/payments")
+@login_required
+def project_payment_add(project_id):
+    project = db.get_or_404(Project, project_id)
+    try:
+        from .services import record_payment
+
+        record_payment(
+            project.lead,
+            request.form.get("amount"),
+            request.form.get("method"),
+            date.fromisoformat(request.form.get("received_on", "")),
+            current_user,
+            request.form.get("reference", ""),
+            request.form.get("notes", ""),
+        )
+        flash("Payment recorded and awaiting verification.", "success")
+    except (DomainError, ValueError) as error:
+        flash(str(error) or "Enter a valid payment date.", "danger")
+    return redirect(url_for("admin.project_detail", project_id=project.id))
+
+
+@admin_bp.post("/projects/<int:project_id>/payments/<int:payment_id>/verify")
+@login_required
+def project_payment_verify(project_id, payment_id):
+    project = db.get_or_404(Project, project_id)
+    from .models import Payment
+
+    payment = db.get_or_404(Payment, payment_id)
+    if payment.lead_id != project.lead_id:
+        abort(404)
+    try:
+        verify_payment(payment, current_user)
+        flash("Payment verified.", "success")
+    except DomainError as error:
+        flash(str(error), "danger")
+    return redirect(url_for("admin.project_detail", project_id=project.id))
+
+
+@admin_bp.post("/projects/<int:project_id>/updates")
+@login_required
+def project_add_progress(project_id):
+    project = db.get_or_404(Project, project_id)
+    title = request.form.get("title", "").strip()
+    notes = request.form.get("notes", "").strip()
+    uploads = [
+        upload
+        for upload in request.files.getlist("images")
+        if upload and upload.filename
+    ]
+    if not title or len(title) > 180:
+        flash("Add a progress update title (up to 180 characters).", "danger")
+        return redirect(url_for("admin.project_detail", project_id=project.id))
+    if len(notes) > 5000:
+        flash("Progress notes must be 5,000 characters or fewer.", "danger")
+        return redirect(url_for("admin.project_detail", project_id=project.id))
+    if len(uploads) > 4:
+        flash("Attach no more than four progress photos at once.", "danger")
+        return redirect(url_for("admin.project_detail", project_id=project.id))
+    try:
+        image_urls = [store_image(upload) for upload in uploads]
+        update = ProjectUpdate(
+            project=project,
+            created_by_id=current_user.id,
+            title=title,
+            notes=notes or None,
+            images=image_urls,
+        )
+        db.session.add(update)
+        db.session.add(
+            LeadActivity(
+                lead_id=project.lead_id,
+                actor_id=current_user.id,
+                action="Project progress updated",
+                details={"title": title, "image_count": len(image_urls)},
+            )
+        )
+        db.session.commit()
+        flash("Project progress update added.", "success")
+    except UploadError as error:
+        db.session.rollback()
+        flash(str(error), "danger")
+    return redirect(url_for("admin.project_detail", project_id=project.id))
 
 
 def api_error(message, status=400):

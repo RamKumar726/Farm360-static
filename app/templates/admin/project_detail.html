@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}{{ project.reference }} — Projects — FARM360{% endblock %}
+{% block content %}
+{% include 'admin/_nav.html' %}
+{% set p = project %}
+{% set paid = payment_totals.verified|float %}
+{% set recorded = payment_totals.recorded|float %}
+{% set balance = [p.final_value|float - paid, 0]|max %}
+{% set available = [p.final_value|float - recorded, 0]|max %}
+{% set percent = (paid / p.final_value|float * 100) if p.final_value else 0 %}
+<main class="container admin-page">
+  <header class="project-detail-page-heading">
+    <a class="back-link" href="{{ url_for('admin.projects') }}">← All projects</a>
+    <div class="project-detail-page-title"><div><p class="eyebrow">PROJECT REGISTER · {{ p.reference }}</p><h1>{{ p.client_name }}</h1><p class="admin-subtitle">{{ p.approved_services or 'FARM360 project' }} · {{ p.client_location }} · Created {{ p.created_at.strftime('%d %b %Y') }}</p></div><span class="project-status status-chip-{{ p.status|lower|replace(' ','-') }}">{{ p.status }}</span></div>
+  </header>
+  <article class="project-card project-card-expanded project-detail-record">
+    <div class="project-card-top"><div><p class="eyebrow">CLIENT CONTACT</p><h3>{{ p.client_name }}</h3><span class="project-contact">{{ p.client_phone }}{% if p.client_email %} <i></i> {{ p.client_email }}{% endif %} <i></i> {{ p.client_location }}</span></div><a class="project-lead-link" href="{{ url_for('admin.lead_detail',lead_id=p.lead.id) }}">Open original lead ↗</a></div>
+    <div class="project-value-line"><span>Agreed project value</span><strong>₹{{ '%.2f'|format(p.final_value|float) }}</strong></div>
+    <div class="project-payment-overview">
+      <div class="project-payment-numbers"><div><span>Verified received</span><strong>₹{{ '%.2f'|format(paid) }}</strong></div><div><span>Balance remaining</span><strong>₹{{ '%.2f'|format(balance) }}</strong></div></div>
+      <div class="project-payment-track" role="progressbar" aria-label="Verified payment progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ percent|round|int }}"><span style="width: {{ [percent, 100]|min }}%"></span></div>
+      <small>Only verified payments count toward the balance.</small>
+    </div>
+    <div class="project-detail-grid"><div><span>Approved services</span><p>{{ p.approved_services or 'Not specified' }}</p></div><div><span>Agreed scope</span><p>{{ p.approved_scope or 'No scope notes recorded.' }}</p></div>{% if p.deliverables %}<div class="project-scope"><span>Deliverables</span><p>{{ p.deliverables }}</p></div>{% endif %}</div>
+
+    <details class="project-section project-payment-section" open>
+      <summary><span><b>01</b> Payments and balance</span><i>{{ p.lead.payments|length }} records</i></summary>
+      <div class="project-section-body">
+        <div class="project-payment-history">
+          {% for payment in p.lead.payments|reverse %}<div class="project-payment-row"><div><strong>₹{{ '%.2f'|format(payment.amount|float) }}</strong><span>{{ payment.method }} · {{ payment.received_on.strftime('%d %b %Y') }}{% if payment.reference %} · {{ payment.reference }}{% endif %}</span></div><div class="payment-status {% if payment.verified %}is-verified{% endif %}">{{ 'Verified' if payment.verified else 'Needs verification' }}{% if not payment.verified %}<form method="post" action="{{ url_for('admin.project_payment_verify',project_id=p.id,payment_id=payment.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="mini-action">Verify payment</button></form>{% endif %}</div></div>{% else %}<p class="text-secondary">No payments have been recorded.</p>{% endfor %}
+        </div>
+        {% if available > 0 and p.status != 'Cancelled' %}<form class="project-inline-form" method="post" action="{{ url_for('admin.project_payment_add',project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="project-form-heading"><div><p class="eyebrow">NEXT INSTALLMENT</p><strong>Record a payment</strong></div><span>Up to ₹{{ '%.2f'|format(available) }} can be recorded</span></div><div class="row g-3"><div class="col-sm-6"><label class="form-label" for="amount-{{ p.id }}">Amount (INR)</label><input class="form-control" id="amount-{{ p.id }}" name="amount" type="number" min="0.01" max="{{ '%.2f'|format(available) }}" step="0.01" required></div><div class="col-sm-6"><label class="form-label" for="method-{{ p.id }}">Payment method</label><select class="form-select" id="method-{{ p.id }}" name="method" required>{% for method in ['Cash','UPI','Bank Transfer','Cheque'] %}<option>{{ method }}</option>{% endfor %}</select></div><div class="col-sm-6"><label class="form-label" for="received-{{ p.id }}">Received date</label><input class="form-control" id="received-{{ p.id }}" name="received_on" type="date" value="{{ today }}" required></div><div class="col-sm-6"><label class="form-label" for="reference-{{ p.id }}">Reference (optional)</label><input class="form-control" id="reference-{{ p.id }}" name="reference"></div><div class="col-12"><label class="form-label" for="payment-notes-{{ p.id }}">Notes (optional)</label><input class="form-control" id="payment-notes-{{ p.id }}" name="notes" placeholder="Installment, milestone or receipt note"></div><div class="col-12"><button class="btn btn-outline-forest">Record installment <span>→</span></button></div></div></form>{% elif balance <= 0 %}<div class="project-paid-in-full"><span>✓</span><strong>Agreed value paid in full</strong></div>{% endif %}
+      </div>
+    </details>
+
+    <details class="project-section project-progress-section" open>
+      <summary><span><b>02</b> Work progress</span><i>{{ p.updates|length }} updates</i></summary>
+      <div class="project-section-body">
+        <form class="project-inline-form progress-entry-form" method="post" enctype="multipart/form-data" action="{{ url_for('admin.project_add_progress',project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="project-form-heading"><div><p class="eyebrow">ADD TO THE PROJECT JOURNAL</p><strong>Capture what’s been done</strong></div><span>Progress photos are stored in Cloudinary.</span></div><div class="row g-3"><div class="col-12"><label class="form-label" for="update-title-{{ p.id }}">Update title</label><input class="form-control" id="update-title-{{ p.id }}" name="title" maxlength="180" placeholder="e.g. Site preparation completed" required></div><div class="col-12"><label class="form-label" for="update-notes-{{ p.id }}">What happened?</label><textarea class="form-control" id="update-notes-{{ p.id }}" name="notes" rows="3" maxlength="5000" placeholder="Add a useful note about the work or next step"></textarea></div><div class="col-12"><label class="form-label" for="update-images-{{ p.id }}">Progress photos <small>Up to 4 images, 5 MB each</small></label><input class="form-control file-control" id="update-images-{{ p.id }}" name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple></div><div class="col-12"><button class="btn btn-forest">Save progress update <span>→</span></button></div></div></form>
+        <div class="project-timeline">{% for update in p.updates %}<article class="project-timeline-entry"><span class="project-timeline-dot"></span><div class="project-timeline-content"><div class="project-timeline-heading"><div><p class="eyebrow">{{ update.created_at.strftime('%d %b %Y · %H:%M') }}</p><h3>{{ update.title }}</h3></div><span>{% if update.created_by %}{{ update.created_by.email }}{% else %}FARM360 team{% endif %}</span></div>{% if update.notes %}<p>{{ update.notes }}</p>{% endif %}{% if update.images %}<div class="project-progress-images">{% for image in update.images %}<a href="{{ image }}" target="_blank" rel="noopener"><img src="{{ image }}" alt="{{ update.title }} — progress photo {{ loop.index }}"></a>{% endfor %}</div>{% endif %}</div></article>{% else %}<div class="project-timeline-empty"><span>✳</span><p>No progress entries yet. Add the first update when work begins.</p></div>{% endfor %}</div>
+      </div>
+    </details>
+
+    <details class="project-section project-management-section">
+      <summary><span><b>03</b> Project details</span><i>Manage delivery</i></summary>
+      <div class="project-section-body"><form class="project-update-form" method="post" action="{{ url_for('admin.project_update',project_id=p.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><div class="row g-3"><div class="col-md-5"><label class="form-label" for="status-{{ p.id }}">Project status</label><select id="status-{{ p.id }}" class="form-select" name="status">{% for status in ['Not Started','In Progress','On Hold','Completed','Cancelled'] %}<option value="{{ status }}" {% if p.status==status %}selected{% endif %}>{{ status }}</option>{% endfor %}</select></div><div class="col-md-7"><label class="form-label" for="notes-{{ p.id }}">Internal notes</label><textarea class="form-control" id="notes-{{ p.id }}" name="internal_notes" rows="2" placeholder="Next step, owner or private note">{{ p.internal_notes or '' }}</textarea></div></div><div class="project-save-row"><span>Internal notes are only visible to administrators.</span><button class="btn btn-forest">Save project details <span>→</span></button></div></form></div>
+    </details>
+  </article>
+</main>
+{% endblock %}

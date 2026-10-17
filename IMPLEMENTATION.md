@@ -22,6 +22,8 @@
 - [x] Phase 8: validated local development and Cloudinary production image storage adapters.
 - [x] Phase 9: app route registration, 27 passing tests, Ruff checks, and fresh-schema migration checks.
 - [x] Completed lead stages can be reviewed and edited; edits are recorded in the lead activity trail and approved scope remains protected.
+- [x] Public service detail pages show service benefits, inclusions, and related published work.
+- [x] Projects support verified advance payments, later installments, balance tracking, and an administrator-only progress journal with images.
 - [x] Visual polish: responsive public homepage, updated type and color system, subtle scroll reveals, reduced-motion support, and a consistent admin workspace.
 - [ ] Phase 9: PostgreSQL/Neon and Render verification.
 
