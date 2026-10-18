@@ -32,6 +32,7 @@ from .services import (
     PROJECT_STATUSES,
     DomainError,
     close_lost,
+    reopen_lost,
     create_lead,
     record_payment,
     save_quote,
@@ -473,6 +474,18 @@ def lead_lost(lead_id):
     return redirect(url_for("admin.lead_detail", lead_id=lead.id))
 
 
+@admin_bp.post("/leads/<int:lead_id>/reopen")
+@login_required
+def lead_reopen(lead_id):
+    lead = db.get_or_404(Lead, lead_id)
+    try:
+        reopen_lost(lead, current_user)
+        flash("Lead reopened. Continue from its previous stage.", "success")
+    except DomainError as e:
+        flash(str(e), "danger")
+    return redirect(url_for("admin.lead_detail", lead_id=lead.id))
+
+
 @admin_bp.route("/services", methods=["GET", "POST"])
 @login_required
 def manage_services():
@@ -483,6 +496,9 @@ def manage_services():
             flash("Enter a unique service name.", "danger")
         else:
             try:
+                gallery_uploads = request.files.getlist("gallery")
+                if len(gallery_uploads) > 10:
+                    raise UploadError("Upload no more than 10 service gallery images at once.")
                 service = Service(
                     name=name[:120],
                     slug=slug,
@@ -494,6 +510,11 @@ def manage_services():
                     display_order=request.form.get("display_order", 0, type=int),
                 )
                 service.image_key = store_image(request.files.get("image"))
+                service.gallery = [
+                    key
+                    for upload in gallery_uploads
+                    if (key := store_image(upload))
+                ]
                 db.session.add(service)
                 db.session.commit()
                 flash("Service added.", "success")
@@ -520,7 +541,16 @@ def edit_service(service_id):
     service.active = "active" in request.form
     service.display_order = request.form.get("display_order", 0, type=int)
     try:
+        gallery_uploads = request.files.getlist("gallery")
+        if len(gallery_uploads) > 10:
+            raise UploadError("Upload no more than 10 service gallery images at once.")
         service.image_key = store_image(request.files.get("image")) or service.image_key
+        extra_images = [
+            key
+            for upload in gallery_uploads
+            if (key := store_image(upload))
+        ]
+        service.gallery = (service.gallery or []) + extra_images
         db.session.commit()
         flash("Service saved.", "success")
     except UploadError as error:
@@ -855,6 +885,8 @@ def api_services():
                 "slug": s.slug,
                 "short_description": s.short_description,
                 "description": s.description,
+                "image": s.image_key,
+                "gallery": s.gallery or [],
             }
             for s in Service.query.filter_by(active=True, archived=False)
             .order_by(Service.display_order)
@@ -874,6 +906,7 @@ def api_portfolio():
                 "service": p.service.name if p.service else None,
                 "location": p.location,
                 "image": p.image_key,
+                "gallery": p.gallery or [],
                 "completed_on": p.completed_on.isoformat() if p.completed_on else None,
             }
             for p in PortfolioItem.query.filter_by(published=True, archived=False)

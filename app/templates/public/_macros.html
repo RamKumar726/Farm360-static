@@ -1,0 +1,11 @@
+{% macro image_carousel(images, alt, extra_class='') -%}
+  {% set slides = images or [] %}
+  {% if slides %}
+    <div class="image-carousel {{ extra_class }}" data-image-carousel role="group" aria-label="Photos: {{ alt }}">
+      {% for image_url in slides %}
+        <img class="image-carousel-slide{% if loop.first %} is-active{% endif %}" src="{{ image_url }}" alt="{{ alt }}{% if not loop.first %} — image {{ loop.index }}{% endif %}" {% if not loop.first %}aria-hidden="true"{% endif %} loading="lazy" decoding="async">
+      {% endfor %}
+      {% if slides|length > 1 %}<span class="image-carousel-count" aria-hidden="true"><span data-image-current>01</span><i></i>{{ '%02d'|format(slides|length) }}</span>{% endif %}
+    </div>
+  {% endif %}
+{%- endmacro %}

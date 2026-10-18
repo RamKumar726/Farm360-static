@@ -39,6 +39,7 @@ class Service(db.Model):
     short_description = db.Column(db.String(300), nullable=False, default="")
     description = db.Column(db.Text, nullable=False, default="")
     image_key = db.Column(db.String(255))
+    gallery = db.Column(db.JSON, nullable=False, default=list)
     benefits = db.Column(db.Text)
     features = db.Column(db.Text)
     active = db.Column(db.Boolean, nullable=False, default=True)

@@ -54,6 +54,57 @@
     });
   });
 
+  document.querySelectorAll("[data-image-carousel]").forEach((carousel) => {
+    const slides = Array.from(carousel.querySelectorAll(".image-carousel-slide"));
+    const currentLabel = carousel.querySelector("[data-image-current]");
+    if (slides.length < 2) return;
+
+    let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains("is-active")));
+    let timer = null;
+    let inView = false;
+    let paused = false;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const showSlide = (index) => {
+      activeIndex = (index + slides.length) % slides.length;
+      slides.forEach((slide, slideIndex) => {
+        const active = slideIndex === activeIndex;
+        slide.classList.toggle("is-active", active);
+        slide.setAttribute("aria-hidden", String(!active));
+      });
+      if (currentLabel) currentLabel.textContent = String(activeIndex + 1).padStart(2, "0");
+    };
+    const stop = () => {
+      if (timer) window.clearInterval(timer);
+      timer = null;
+    };
+    const start = () => {
+      if (reducedMotion || !inView || paused || document.hidden || timer) return;
+      timer = window.setInterval(() => showSlide(activeIndex + 1), 1000);
+    };
+
+    carousel.addEventListener("pointerenter", () => { paused = true; stop(); });
+    carousel.addEventListener("pointerleave", () => { paused = false; start(); });
+    carousel.addEventListener("focusin", () => { paused = true; stop(); });
+    carousel.addEventListener("focusout", (event) => {
+      if (carousel.contains(event.relatedTarget)) return;
+      paused = false;
+      start();
+    });
+    document.addEventListener("visibilitychange", () => document.hidden ? stop() : start());
+
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver((entries) => {
+        inView = entries[0].isIntersecting;
+        if (inView) start(); else stop();
+      }, { threshold: 0.15 });
+      observer.observe(carousel);
+    } else {
+      inView = true;
+      start();
+    }
+  });
+
   const targets = document.querySelectorAll(
     "[data-reveal], .section-heading, .about-copy, .about-image, .process-step, .portfolio-card",
   );

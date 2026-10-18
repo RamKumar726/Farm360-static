@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'public/_macros.html' import image_carousel %}
 {% block title %}{{ service.name }} — FARM360{% endblock %}
 {% block content %}
 <section class="service-detail-hero">
@@ -12,7 +13,7 @@
       <div class="service-detail-assurance"><span>01 / 03</span><span>Thoughtful advice · Clear scope · Work made for your place</span></div>
     </div>
     <div class="service-detail-visual" data-reveal>
-      {% if service.image_key %}<img src="{{ service.image_key }}" alt="{{ service.name }} project">{% else %}<div class="service-detail-visual-placeholder"><span>✳</span><small>GROW WELL, LIVE WELL</small></div>{% endif %}
+      {% set service_images = ([service.image_key] if service.image_key else []) + (service.gallery or []) %}{% if service_images %}{{ image_carousel(service_images, service.name ~ " project") }}{% else %}<div class="service-detail-visual-placeholder"><span>✳</span><small>GROW WELL, LIVE WELL</small></div>{% endif %}
       <span class="service-visual-caption">{{ service.name }} · FARM360</span>
     </div>
   </div>
@@ -48,7 +49,7 @@
   <div class="container">
     <div class="service-related-heading" data-reveal><div><p class="eyebrow">REAL WORK, RELATED TO THIS SERVICE</p><h2>See what can <em>take root.</em></h2></div><a href="{{ url_for('public.portfolio_page') }}">Explore all our work <span>↗</span></a></div>
     <div class="service-related-grid">
-      {% for item in works %}<article class="service-related-card" data-reveal><a class="service-related-image" href="{{ url_for('public.portfolio_page') }}" aria-label="View {{ item.title }} in our work">{% if item.image_key %}<img src="{{ item.image_key }}" alt="{{ item.title }}">{% else %}<span>✳</span>{% endif %}</a><div class="service-related-copy"><p class="eyebrow">{% if item.location %}{{ item.location }}{% else %}FARM360 PROJECT{% endif %}{% if item.completed_on %} · {{ item.completed_on.strftime('%Y') }}{% endif %}</p><h3>{{ item.title }}</h3><p>{{ item.description|truncate(170) }}</p></div></article>
+      {% for item in works %}<article class="service-related-card" data-reveal><a class="service-related-image" href="{{ url_for('public.portfolio_page') }}" aria-label="View {{ item.title }} in our work">{% set work_images = ([item.image_key] if item.image_key else []) + (item.gallery or []) %}{% if work_images %}{{ image_carousel(work_images, item.title) }}{% else %}<span>✳</span>{% endif %}</a><div class="service-related-copy"><p class="eyebrow">{% if item.location %}{{ item.location }}{% else %}FARM360 PROJECT{% endif %}{% if item.completed_on %} · {{ item.completed_on.strftime('%Y') }}{% endif %}</p><h3>{{ item.title }}</h3><p>{{ item.description|truncate(170) }}</p></div></article>
       {% else %}<div class="service-related-empty"><span>✳</span><h3>More work is taking shape.</h3><p>We’re preparing related project stories. Talk with us about what you have in mind.</p><a class="service-story-link" href="{{ url_for('public.enquire', service=service.id) }}">Discuss this service <span>↗</span></a></div>{% endfor %}
     </div>
   </div>

@@ -6,11 +6,12 @@
   <meta name="theme-color" content="#153b2c">
   <title>{% block title %}FARM360 — Growing with purpose{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}?v=projects-table1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}?v=photo-carousel1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/polish.css') }}?v=photo-focus2">
 </head>
-<body{% if request.blueprint == 'admin' %} class="admin-body"{% endif %}>
+<body{% if request.blueprint == 'admin' %} class="admin-body{% if request.endpoint == 'admin.lead_detail' %} admin-lead-detail{% endif %}"{% endif %}>
 <nav class="navbar navbar-expand-lg navbar-light site-nav sticky-top">
   <div class="container"><a class="navbar-brand brand-lockup" href="{{ url_for('public.home') }}"><span class="brand-mark">F</span><span>{{ settings.company_name if settings is defined else 'FARM360' }}<small>GROWING WITH PURPOSE</small></span></a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
@@ -19,5 +20,5 @@
 </nav>
 <main>{% with messages=get_flashed_messages(with_categories=true) %}{% if messages %}<div class="container pt-3">{% for category,message in messages %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endfor %}</div>{% endif %}{% endwith %}{% block content %}{% endblock %}</main>
 <footer class="site-footer"><div class="container footer-main"><div class="row g-5"><div class="col-lg-5"><a class="brand-lockup footer-brand" href="{{ url_for('public.home') }}"><span class="brand-mark">F</span><span>{{ settings.company_name if settings is defined else 'FARM360' }}<small>GROWING WITH PURPOSE</small></span></a><p class="footer-intro">Practical growing spaces and agricultural services, shaped around your land and your goals.</p></div><div class="col-sm-6 col-lg-3"><p class="footer-kicker">SAY HELLO</p><p class="footer-contact">{{ settings.phone if settings is defined and settings.phone else 'We’d love to hear about your project.' }}</p><p class="footer-contact">{{ settings.email if settings is defined else '' }}</p>{% if settings is defined and settings.address %}<p class="footer-contact">{{ settings.address }}</p>{% endif %}</div><div class="col-sm-6 col-lg-4"><p class="footer-kicker">TAKE THE FIRST STEP</p><h2>Something good can grow from here.</h2><a class="footer-link" href="{{ url_for('public.enquire') }}">Start an enquiry <span>↗</span></a></div></div><div class="footer-bottom"><span>© {{ 2026 }} {{ settings.company_name if settings is defined else 'FARM360' }}</span><a href="{{ url_for('auth.login') }}">Admin</a><span>Made for thoughtful growing.</span></div></div></footer>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script><script src="{{ url_for('static', filename='js/motion.js') }}?v=quote-negotiation1" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script><script src="{{ url_for('static', filename='js/motion.js') }}?v=photo-carousel1" defer></script>
 </body></html>

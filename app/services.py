@@ -363,6 +363,24 @@ def close_lost(lead, reason, notes, actor):
     return lead
 
 
+def reopen_lost(lead, actor):
+    if lead.status != "Closed Lost":
+        raise DomainError("Only leads closed as Lost can be reopened.")
+    closed_details = {
+        "reason": lead.closed_reason,
+        "notes": lead.closed_notes,
+        "closed_at": lead.closed_at.isoformat() if lead.closed_at else None,
+    }
+    lead.status = "Open"
+    lead.closed_reason = None
+    lead.closed_notes = None
+    lead.closed_by_id = None
+    lead.closed_at = None
+    record_activity(lead, "Lead reopened", actor, closed_details)
+    db.session.commit()
+    return lead
+
+
 def close_won(lead, actor):
     ensure_open(lead)
     if lead.stage != "Negotiation & Payment":
